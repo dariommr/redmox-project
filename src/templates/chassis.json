@@ -1,0 +1,41 @@
+{
+    "@odata.type": "#Chassis.v1_11_2.Chassis",
+    "Id": "{{ id }}",
+    "Name": "{{ chassis_name }}",
+    "UUID": "{{ uuid }}",
+    "Manufacturer": "Redmox Project",
+    "Model": "{{ chassis_mod }}",
+    "NetworkAdapters": {
+        "@odata.id": "/redfish/v1/Chassis/{{ id }}/fake_networkadapters/"
+    },
+    "Status": {
+        "Health": "OK",
+        "State": "Enabled"
+    },
+    "PowerState": "{{ power_state }}",
+    "ChassisType": "Virtual",
+    "IndicatorLED": "Off",
+    "Links": {
+        "ManagedBy": [
+            {
+                "@odata.id": "/redfish/v1/Managers/1"
+            }
+        ],
+        "ComputerSystems": [
+            {
+                "@odata.id": "/redfish/v1/Systems/{{ vmid }}"
+            }
+        ]
+    },
+    "Power": {
+        "@odata.id": "/redfish/v1/Chassis/{{ id }}/Power"
+    },
+    "Thermal": {
+        "@odata.id": "/redfish/v1/Chassis/{{ id }}/Thermal"
+    },
+    "Oem": {
+    },
+    "@odata.context": "/redfish/v1/$metadata#Chassis.Chassis",
+    "@odata.id": "/redfish/v1/Chassis/{{ id }}",
+    "@Redfish.Copyright": "Copyright 2014-2016 Distributed Management Task Force, Inc. (DMTF). For the full DMTF copyright policy, see http://www.dmtf.org/about/policies/copyright."
+}

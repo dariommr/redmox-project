@@ -1,0 +1,37 @@
+{
+    "@odata.type": "#Thermal.v1_7_1.Thermal",
+    "Name": "Thermal",
+    "Id": "Thermal",
+    "Oem": {},
+    "@odata.context": "/redfish/v1/$metadata#Thermal.Thermal",
+    "@odata.id": "/redfish/v1/Chassis/{{ id }}/Thermal",
+    "Fans": [
+        {
+            "@odata.id": "/redfish/v1/Chassis/{{ id }}/Thermal#Fans/0",
+            "MemberId": "0",
+            "Name": "Fan 1",
+            "Reading": 19,
+            "ReadingUnits": "Percent",
+            "Status": {
+                "Health": "OK",
+                "State": "Enabled"
+            }
+        }
+    ],
+    "Temperatures": [
+        {
+            "@odata.id": "/redfish/v1/Chassis/{{ id }}/Thermal#Temperatures/0",
+            "MemberId": "0",
+            "Name": "01-Inlet Ambient",
+            "PhysicalContext": "Intake",
+            "ReadingCelsius": 26,
+            "SensorNumber": 1,
+            "Status": {
+            "Health": "OK",
+            "State": "Enabled"
+            },
+            "UpperThresholdCritical": 42,
+            "UpperThresholdFatal": 47
+        }
+  ]
+}
