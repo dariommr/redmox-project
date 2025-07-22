@@ -10,18 +10,14 @@
     "Id": "1",
     "Links": {
         "ManagerForChassis": [
-            {% for id in id_list %}
             {
-              "@odata.id": "/redfish/v1/Chassis/{{ id }}U"
+              "@odata.id": "/redfish/v1/Chassis/1U"
             }
-            {% endfor %}
         ],
         "ManagerForServers": [
-            {% for id in id_list %}
             {
-                "@odata.id": "/redfish/v1/Systems/{{ id }}"
+                "@odata.id": "/redfish/v1/Systems/{{ vmid }}"
             }
-            {% endfor %}
         ],
         "ManagerInChassis": {
             "@odata.id": "/redfish/v1/Chassis/1U"
@@ -29,7 +25,7 @@
     },
     "ManagerType": "BMC",
     "Model": "Palc 2000",
-    "Name": "ProxMox Manager",
+    "Name": "ProxMox BMC Manager",
     "PowerState": "On",
     "ServiceEntryPointUUID": null,
     "Status": {

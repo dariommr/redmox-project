@@ -1,31 +1,36 @@
 #!/usr/bin/env python3
 import os
+import yaml
 from waitress import serve
 from libs.apilib import RedmoxAPI
-from libs.common import Clr
-
-def get_configs():
-    """
-    Function to get the configuration from the environment variables
-    """
-    configs_out = {
-        "proxmox_host": os.getenv("PMOX_ADDR"),
-        "proxmox_port": os.getenv("PMOX_PORT"),
-        "log_debug": os.getenv("DEBUG")
-    }
-    
-    return configs_out
+from libs.common import Clr, set_logger
 
 if __name__ == "__main__":
-    configs = get_configs()
-    rdx_api = RedmoxAPI(configs)
+    logger = set_logger("RedMox")
+    configs = yaml.safe_load(open("configs.yaml", "r"))
+    if os.getenv("DEBUG") not in [ "yes", "no"]:
+        logger.error(f"Define Debug mode properly. Env. Variable: [{Clr.purple}DEBUG{Clr.reset}], values {Clr.green}yes/no{Clr.reset}")
+        exit()
+    if configs["redfish"]["mode"] not in [ "simple", "multi" ]:
+        logger.error(f"Define Mode properly, values {Clr.green}simple/multi{Clr.reset}")
+        exit()
+    if configs["redfish"]["mode"] == "simple":
+        if not configs["redfish"]["vmid"] or configs["redfish"]["vmid"] == "":
+            logger.error(f"Please set the VMs associated with the manager. Env. Variable: [{Clr.purple}VMIDS{Clr.reset}]")
+            exit()
+    debug = True if os.getenv("DEBUG") == "yes" else False
+
+    rdx_api = RedmoxAPI(configs, debug=debug)
     app = rdx_api.app
 
     print(f"{Clr.purple}#### Starting Redmox Server ####{Clr.reset}\n")
-    if configs["log_debug"] != "" and configs["log_debug"].lower() == "yes":
+    if debug:
         print(f"{Clr.red}Debug Mode: [ENABLED]{Clr.reset}\n")
     print(f"-----------------------\n|    {Clr.cyan}PROXMOX SERVER{Clr.reset}   |\n-----------------------")
-    print(f'- {Clr.green}HOST{Clr.reset}: {configs["proxmox_host"]}\n- {Clr.green}PORT{Clr.reset}: {configs["proxmox_port"]}')
+    print(f'- {Clr.green}HOST{Clr.reset}: {configs["proxmox"]["host"]}\n- {Clr.green}PORT{Clr.reset}: {configs["proxmox"]["port"]}')
     print("-----------------------\n")
-    #app.run(debug=True)
-    serve(app, host="0.0.0.0", port=5000)
+
+    if debug:
+        app.run(debug=True)
+    else:
+        serve(app, host=configs["redfish"]["host"], port=configs["redfish"]["port"])

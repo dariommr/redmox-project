@@ -1,0 +1,8 @@
+redfish:
+  host: 0.0.0.0
+  port: 5000
+  mode: simple             #simple/multi
+  vmid: 107
+proxmox:
+  host: 192.168.0.10
+  port: 8006

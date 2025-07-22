@@ -1,13 +1,11 @@
 {
     "@odata.type": "#ChassisCollection.ChassisCollection",
     "Name": "Computer System Chassis",
-    "Members@odata.count": {{ count }},
+    "Members@odata.count": 1,
     "Members": [
-        {% for id in id_list %}
         {
-            "@odata.id": "{{ id|string }}"
+            "@odata.id": "/redfish/v1/Chassis/1U"
         }
-        {% endfor %}
     ],
     "@odata.context": "/redfish/v1/$metadata#ChassisCollection.ChassisCollection",
     "@odata.id": "/redfish/v1/Chassis",

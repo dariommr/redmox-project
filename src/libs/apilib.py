@@ -12,21 +12,35 @@ from libs.common import CustomFormatter
 global SESSIONS
 SESSIONS = {}
 
+def bmc_map():
+    json_out = {}
+    with open("bmc_map", "r") as f:
+        arr_map = [ x.split() for x in f.readlines() ]
+    for line in arr_map:
+        json_out[line[0]] = line[1]
+    
+    return json_out
+
 class RedmoxAPI():
-    def __init__(self, configs):
+    def __init__(self, configs, debug=False):
         self.configs = configs
         self.app = Flask("RedmoxAPI")
         for handler in self.app.logger.handlers[:]:
             self.app.logger.removeHandler(handler)
         handler = logging.StreamHandler(sys.stdout)
         handler.setFormatter(CustomFormatter())
-        if configs["log_debug"] != "" and configs["log_debug"].lower() == "yes":
+        if debug:
             self.app.logger.setLevel(logging.DEBUG)
         else:
             self.app.logger.setLevel(logging.INFO)
         self.app.logger.addHandler(handler)
         self.app.logger.propagate = False
         self.current_user = ''
+        with open("bmc_map", "r") as f:
+            arr_map = [ x.split() for x in f.readlines() ]
+        self.bmc_map = {}
+        for line in arr_map:
+            self.bmc_map[line[0]] = line[1]
 
         # Authentication decorator
         def token_required(f):
@@ -45,11 +59,10 @@ class RedmoxAPI():
                         if token == key:
                             match_flag = True
                     if match_flag:
-                        self.app.logger.info("Found session for the token provided")
                         if SESSIONS[token]["UserName"] != self.current_user:
                             self.pmox = Proxmox(
-                                host=self.configs["proxmox_host"],
-                                port=self.configs["proxmox_port"],
+                                host=self.configs["proxmox"]["host"],
+                                port=self.configs["proxmox"]["port"],
                                 user=SESSIONS[token]["UserName"],
                                 password=SESSIONS[token]["Password"]
                             )
@@ -78,7 +91,7 @@ class RedmoxAPI():
 
         @self.app.route("/", methods=["GET"])
         def root():
-            return ""
+            return ''
 
         @self.app.route("/redfish", methods=["GET"])
         def redfish():
@@ -115,18 +128,19 @@ class RedmoxAPI():
         def managers():
             return render_template('managers.json')
 
-        @self.app.route('/redfish/v1/Managers/1', methods=['GET'])
+        @self.app.route(f'/redfish/v1/Managers/1', methods=['GET'])
         @token_required
         def manager():
-            id_list = self.pmox.get_vms_id()
+            req_addr = request.url.split("/")[2].split(":")[0]
+            vmid = self.bmc_map[req_addr]
             json_out = render_template(
                 'manager.json',
                 date_time=datetime.now().strftime('%Y-%M-%dT%H:%M:%S+00:00'),
-                id_list=id_list
+                vmid=vmid
             )
             return json_out
 
-        @self.app.route('/redfish/v1/Managers/1/VirtualMedia', methods=['GET'])
+        @self.app.route(f'/redfish/v1/Managers/1/VirtualMedia', methods=['GET'])
         @token_required
         def man_virtualmedias():
             try:
@@ -152,17 +166,20 @@ class RedmoxAPI():
                 }
             return make_response(json_out, error_code)
 
-        @self.app.route('/redfish/v1/Managers/1/VirtualMedia/<isoid>', methods=['GET'])
+        @self.app.route(f'/redfish/v1/Managers/1/VirtualMedia/<isoid>', methods=['GET'])
         @token_required
         def man_virtualmedia(isoid):
             try:
                 self.app.logger.info("Getting the Proxmox ISO list")
                 isos = self.pmox.list_isos()
+                iso_path = ""
                 for iso in isos:
                     arr_iso = iso.split("/")
                     if isoid == arr_iso[-1]:
                         iso_path = iso
                         iso_name = arr_iso[-1]
+                if iso_path == "":
+                    raise Exception("ISO not found in Proxox Storage")
 
                 json_out = render_template(
                     'virtual_cd.json',
@@ -197,8 +214,8 @@ class RedmoxAPI():
                     location = f"{request.path}/{id}"
                     self.app.logger.info("New Session: Authenticating with ProxMox Server")
                     self.pmox = Proxmox(
-                        host=self.configs["proxmox_host"],
-                        port=self.configs["proxmox_port"],
+                        host=self.configs["proxmox"]["host"],
+                        port=self.configs["proxmox"]["port"],
                         user=username,
                         password=password
                     )
@@ -250,56 +267,39 @@ class RedmoxAPI():
         @self.app.route('/redfish/v1/Chassis')
         @token_required
         def chassis_collection():
-            id_list = [ "/redfish/v1/Chassis/1U" ]
-            self.app.logger.info("Getting VMs list")
-            for vmid in self.pmox.get_vms_id():
-                id_list.append(f"/redfish/v1/Chassis/{vmid}U")
-            json_out = render_template(
-                'chassis_collection.json',
-                count= len(id_list),
-                id_list=id_list
-            )
-            return json_out
+            return render_template('chassis_collection.json')
 
-        @self.app.route('/redfish/v1/Chassis/<chid>', methods=['GET'])
+        @self.app.route('/redfish/v1/Chassis/1U', methods=['GET'])
         @token_required
-        def chassis(chid):
-            int_id = int(chid.replace("U", ""))
-            uuid_out = uuid.UUID(int=int_id)
-            if chid == "1U":
-                name = "Fake Chassis for Manager"
+        def chassis():
+            uuid_out = uuid.UUID(int=1)
+            req_addr = request.url.split("/")[2].split(":")[0]
+            vmid = self.bmc_map[req_addr]
+            self.app.logger.info(f"Getting information from VM: {vmid}")
+            vm = self.pmox.get_vm_info(vmid)
+            if "error" in vm.keys():
+                return make_response(json.dumps(vm, indent=4), 404)
+            if vm.get("status", "Unknown") == "running":
                 power_state = "On"
             else:
-                self.app.logger.info(f"Getting information from VM: {id}")
-                vm = self.pmox.get_vm_info(str(int_id))
-                if "error" in vm.keys():
-                    return make_response(json.dumps(vm, indent=4), 404)
-                print(vm)
-                if vm.get("status", "Unknown") == "running":
-                    power_state = "On"
-                else:
-                    power_state = "Off"
-                name = f'{vm.get("name", "Unknown")} fake chassis'
+                power_state = "Off"
             json_out = render_template(
                 'chassis.json',
-                id=chid,
                 uuid=uuid_out,
-                chassis_name=name,
-                chassis_mod=self.pmox.name,
-                vmid=int_id,
+                vmid=vmid,
                 power_state=power_state
             )
             return json_out
 
-        @self.app.route('/redfish/v1/Chassis/<chid>/Power', methods=['GET'])
+        @self.app.route('/redfish/v1/Chassis/1U/Power', methods=['GET'])
         @token_required
-        def power(chid):
-            return render_template('power.json', id=chid)
+        def power():
+            return render_template('power.json')
 
-        @self.app.route('/redfish/v1/Chassis/<chid>/Thermal', methods=['GET'])
+        @self.app.route('/redfish/v1/Chassis/1U/Thermal', methods=['GET'])
         @token_required
-        def thermal(chid):
-            return render_template('thermal.json', id=chid)
+        def thermal():
+            return render_template('thermal.json')
 
         @self.app.route("/redfish/v1/Systems", methods=["GET"])
         @token_required
